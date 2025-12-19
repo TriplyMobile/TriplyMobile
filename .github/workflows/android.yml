@@ -1,0 +1,66 @@
+name: Android Build
+
+on:
+  push:
+    branches: ["main"]
+  workflow_run:
+    workflows: ["Prebuild"]
+    types:
+      - completed
+    branches: ["main"]
+
+jobs:
+  android-build:
+    name: Build Android
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Expo CLI
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup EAS CLI
+        run: npm install -g @expo/eas-cli
+
+      - name: Build Android with EAS
+        run: eas build --platform android --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: build-artifact
+          path: ./build
+
+      - name: Notify on Failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          gh issue create \
+            --repo ${{ github.repository }} \
+            --title "Android Build Failed" \
+            --body "The Android build failed for commit ${{ github.sha }}. [See logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" \
+            --label "bug"
