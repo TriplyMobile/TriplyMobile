@@ -1,4 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -13,6 +14,10 @@ export default function Index() {
   const handleSignUp = () => {
     // Navigation will be added later
     console.log("Sign up pressed");
+  };
+
+  const handleSimulateLogin = () => {
+    router.push("/trips");
   };
 
   return (
@@ -60,6 +65,13 @@ export default function Index() {
               <Text style={styles.signUpButtonText}>Sign Up</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Temporary simulate login link */}
+        <View style={styles.simulateLoginContainer}>
+          <TouchableOpacity onPress={handleSimulateLogin} activeOpacity={0.7}>
+            <Text style={styles.simulateLoginText}>Simulate login</Text>
+          </TouchableOpacity>
         </View>
       </LinearGradient>
     </View>
@@ -178,5 +190,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     letterSpacing: 0.5,
+  },
+  simulateLoginContainer: {
+    position: "absolute",
+    bottom: 40,
+    width: "100%",
+    alignItems: "center",
+  },
+  simulateLoginText: {
+    color: "rgba(255, 255, 255, 0.7)",
+    fontSize: 14,
+    textDecorationLine: "underline",
   },
 });
