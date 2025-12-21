@@ -203,11 +203,11 @@ export default function TripDetail() {
       const tripRef = doc(db, "trips", id);
       const updateData: Partial<Trip> = {
         name: formData.name.trim(),
-        startDate: formData.startDate || undefined,
-        endDate: formData.endDate || undefined,
-        countryDestination: formData.countryDestination || undefined,
-        currency: formData.currency || undefined,
-        description: formData.description || undefined,
+        startDate: formData.startDate || "",
+        endDate: formData.endDate || "",
+        countryDestination: formData.countryDestination || "",
+        currency: formData.currency || "",
+        description: formData.description || "",
       };
 
       if (formData.maxBudget) {
@@ -216,7 +216,7 @@ export default function TripDetail() {
           updateData.maxBudget = budget;
         }
       } else {
-        updateData.maxBudget = undefined;
+        updateData.maxBudget = 0;
       }
 
       await updateDoc(tripRef, updateData);
