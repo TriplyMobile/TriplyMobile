@@ -1,5 +1,11 @@
 name: Create preview
-on: [pull_request]
+on:
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   preview:
@@ -7,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write # Required for the QR code comment
+      pull-requests: write
     steps:
       - name: Set up repository
         uses: actions/checkout@v4
@@ -16,7 +22,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm' # Changed from yarn to npm to match your project
+          cache: 'npm'
 
       - name: Set up EAS
         uses: expo/expo-github-action@v8
@@ -25,9 +31,9 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
-        run: npm install # Changed from yarn install
+        run: npm ci
 
       - name: Create preview
         uses: expo/expo-github-action/preview@v8
         with:
-          command: eas update --auto --branch pr-${{ github.event.number }}
+          command: eas update --auto --branch pr-${{ github.event.number }} --non-interactive
