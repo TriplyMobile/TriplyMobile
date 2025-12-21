@@ -15,7 +15,7 @@
 
 ## Path Conventions
 
-- **Mobile app**: `app/` directory for Expo Router pages, `app/types/` for TypeScript types, `app/constants/` for constants
+- **Mobile app**: `app/` directory for Expo Router routes only, `types/` at root level for TypeScript types, `constants/` at root level for constants
 
 ---
 
@@ -24,9 +24,9 @@
 **Purpose**: Project initialization and basic structure
 
 - [ ] T001 Create directory structure: `app/trips/` directory for dynamic route
-- [ ] T002 [P] Create TypeScript types file `app/types/trip.ts` with Trip and TripFormData interfaces
-- [ ] T003 [P] Create countries constants file `app/constants/countries.ts` with predefined country list
-- [ ] T004 [P] Create currencies constants file `app/constants/currencies.ts` with currency codes and symbols
+- [ ] T002 [P] Create TypeScript types file `types/trip.ts` at root level with Trip and TripFormData interfaces
+- [ ] T003 [P] Create countries constants file `constants/countries.ts` at root level with predefined country list
+- [ ] T004 [P] Create currencies constants file `constants/currencies.ts` at root level with currency codes and symbols
 
 ---
 
@@ -51,7 +51,7 @@
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Create trip detail page component `app/trips/[id].tsx` with basic structure and route parameter extraction
+- [ ] T007 [US1] Create trip detail page component `app/trips/[id].tsx` with basic structure, route parameter extraction, and import Trip type from `../../types/trip` (relative path from app/trips/[id].tsx to root types/)
 - [ ] T008 [US1] Implement trip loading logic in `app/trips/[id].tsx` using Firestore `getDoc` to fetch trip by ID
 - [ ] T009 [US1] Add loading state with ActivityIndicator in `app/trips/[id].tsx` while fetching trip data
 - [ ] T010 [US1] Implement error handling for trip loading in `app/trips/[id].tsx` with user-friendly error messages
@@ -77,8 +77,8 @@
 - [ ] T017 [US2] Implement edit button/control in `app/trips/[id].tsx` to toggle edit mode
 - [ ] T018 [US2] Create edit mode UI in `app/trips/[id].tsx` with TextInput components for all editable fields
 - [ ] T019 [US2] Implement date input handling in `app/trips/[id].tsx` for startDate and endDate fields (TextInput with date picker modal or formatted input)
-- [ ] T020 [US2] Implement country selection dropdown in `app/trips/[id].tsx` using countries from `app/constants/countries.ts`
-- [ ] T021 [US2] Implement currency selection dropdown in `app/trips/[id].tsx` using currencies from `app/constants/currencies.ts`
+- [ ] T020 [US2] Implement country selection dropdown in `app/trips/[id].tsx` using countries from `constants/countries.ts` (import with `../../constants/countries` from root level)
+- [ ] T021 [US2] Implement currency selection dropdown in `app/trips/[id].tsx` using currencies from `constants/currencies.ts` (import with `../../constants/currencies` from root level)
 - [ ] T022 [US2] Add form validation in `app/trips/[id].tsx` for required name field (prevent save if empty)
 - [ ] T023 [US2] Add date validation in `app/trips/[id].tsx` to ensure endDate >= startDate if both provided
 - [ ] T024 [US2] Add budget validation in `app/trips/[id].tsx` to ensure numeric and non-negative values
@@ -172,9 +172,9 @@ Task: "Update app/_layout.tsx to add Stack.Screen for trips/[id] route"
 Task: "Update app/trips.tsx to add navigation to trip detail page"
 
 # Launch setup tasks together:
-Task: "Create TypeScript types file app/types/trip.ts"
-Task: "Create countries constants file app/constants/countries.ts"
-Task: "Create currencies constants file app/constants/currencies.ts"
+Task: "Create TypeScript types file types/trip.ts at root level"
+Task: "Create countries constants file constants/countries.ts at root level"
+Task: "Create currencies constants file constants/currencies.ts at root level"
 ```
 
 ---
@@ -266,3 +266,4 @@ This delivers core value: users can view complete trip information from the trip
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
 - All tasks include exact file paths for clarity
 - Firestore operations use existing "trips" collection (no new tables)
+- **Important**: Types and constants are at root level (`types/`, `constants/`), not under `app/`. Only routes belong in `app/` directory per Expo Router conventions. Import paths from `app/trips/[id].tsx` should use relative paths like `../../types/trip` or `../../constants/countries`.
