@@ -1,7 +1,7 @@
 import { useNavigation } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -91,6 +91,13 @@ export default function TripDetail() {
       formData.description !== (trip.description || "")
     );
   };
+
+  // Hide back button when editing
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerBackVisible: !isEditing,
+    });
+  }, [navigation, isEditing]);
 
   // Navigation guard for unsaved changes
   useEffect(() => {
