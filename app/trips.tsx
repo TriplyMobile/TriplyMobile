@@ -1,14 +1,15 @@
+import { router } from "expo-router";
 import { addDoc, collection, getDocs } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Modal,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { db } from "../firebaseConfig";
 
@@ -74,9 +75,13 @@ export default function Trips() {
             data={trips}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <View style={styles.card}>
+              <TouchableOpacity
+                style={styles.card}
+                onPress={() => router.push(`/trips/${item.id}`)}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.tripName}>{item.name ?? "Unnamed trip"}</Text>
-              </View>
+              </TouchableOpacity>
             )}
             ListEmptyComponent={<Text style={styles.emptyText}>No trips yet.</Text>}
             contentContainerStyle={[
