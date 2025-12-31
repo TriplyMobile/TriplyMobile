@@ -11,8 +11,7 @@ export default function Index() {
   };
 
   const handleSignUp = () => {
-    // Navigation will be added later
-    console.log("Sign up pressed");
+    router.push("/register");
   };
 
   const handleSimulateLogin = () => {
