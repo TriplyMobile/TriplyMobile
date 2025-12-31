@@ -7,8 +7,7 @@ const { height } = Dimensions.get("window");
 
 export default function Index() {
   const handleLogin = () => {
-    // Navigation will be added later
-    console.log("Login pressed");
+    router.push("/login");
   };
 
   const handleSignUp = () => {
