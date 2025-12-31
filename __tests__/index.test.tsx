@@ -1,4 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import { router } from "expo-router";
 import React from 'react';
 import Index from '../app/index';
 
@@ -31,25 +32,25 @@ describe('Index', () => {
   });
 
   it('calls handleLogin when Login button is pressed', () => {
-    const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+    const consoleSpy = jest.spyOn(router, 'push').mockImplementation();
     const { getByText } = render(<Index />);
     
     const loginButton = getByText('Login');
     fireEvent.press(loginButton);
     
-    expect(consoleSpy).toHaveBeenCalledWith('Login pressed');
+    expect(consoleSpy).toHaveBeenCalledWith("/login");
     
     consoleSpy.mockRestore();
   });
 
   it('calls handleSignUp when Sign Up button is pressed', () => {
-    const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+    const consoleSpy = jest.spyOn(router, 'push').mockImplementation();
     const { getByText } = render(<Index />);
     
     const signUpButton = getByText('Sign Up');
     fireEvent.press(signUpButton);
     
-    expect(consoleSpy).toHaveBeenCalledWith('Sign up pressed');
+    expect(consoleSpy).toHaveBeenCalledWith("/register");
     
     consoleSpy.mockRestore();
   });
