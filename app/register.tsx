@@ -1,4 +1,5 @@
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -16,7 +17,7 @@ import {
   View,
 } from "react-native";
 
-import { auth } from "@/firebaseConfig";
+import { auth, db } from "@/firebaseConfig";
 
 const { height } = Dimensions.get("window");
 
@@ -39,7 +40,11 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const { user } = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, "users", user.uid), {
+        userId: user.uid,
+        email: user.email,
+      });
       router.replace("/trips");
     } catch (error: any) {
       const code = error.code;

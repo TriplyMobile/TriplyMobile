@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { addDoc, collection, getDocs } from "firebase/firestore";
+import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -11,7 +11,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { db } from "../firebaseConfig";
+import { auth, db } from "@/firebaseConfig";
 
 export default function Trips() {
   const [trips, setTrips] = useState<Array<{ id: string; name?: string }>>([]);
@@ -23,7 +23,13 @@ export default function Trips() {
 
   const fetchTrips = async () => {
     try {
-      const snapshot = await getDocs(collection(db, "trips"));
+      const user = auth.currentUser;
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+      const q = query(collection(db, "trips"), where("userId", "==", user.uid));
+      const snapshot = await getDocs(q);
       const allTrips = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...(doc.data() as { name?: string }),
@@ -49,8 +55,11 @@ export default function Trips() {
 
     setCreating(true);
     try {
+      const user = auth.currentUser;
+      if (!user) return;
       await addDoc(collection(db, "trips"), {
         name: tripName.trim(),
+        userId: user.uid,
       });
       setTripName("");
       setModalVisible(false);
