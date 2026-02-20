@@ -5,10 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm start          # Start Expo dev server
-npm run ios        # Run on iOS simulator
-npm run android    # Run on Android emulator
-npm run web        # Run in browser
+npm install        # Install NPM dependencies
+npx expo start     # Run expo server
 npm test           # Run all tests (jest-expo preset)
 npm run lint       # Lint with expo lint (ESLint flat config)
 ```

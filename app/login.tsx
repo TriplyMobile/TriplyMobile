@@ -1,8 +1,10 @@
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import {
+  Alert,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
@@ -14,15 +16,39 @@ import {
   View,
 } from "react-native";
 
+import { auth } from "@/firebaseConfig";
+
 const { height } = Dimensions.get("window");
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
-    // Submit functionality will be added later
-    console.log("Submit pressed", { email, password });
+  const handleSubmit = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please fill in all fields.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.replace("/trips");
+    } catch (error: any) {
+      const code = error.code;
+      let message = "An error occurred. Please try again.";
+      if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
+        message = "Invalid email or password.";
+      } else if (code === "auth/invalid-email") {
+        message = "Please enter a valid email address.";
+      } else if (code === "auth/too-many-requests") {
+        message = "Too many attempts. Please try again later.";
+      }
+      Alert.alert("Sign In Failed", message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -93,11 +119,14 @@ export default function Login() {
               </View>
 
               <TouchableOpacity
-                style={styles.submitButton}
+                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
                 onPress={handleSubmit}
                 activeOpacity={0.8}
+                disabled={loading}
               >
-                <Text style={styles.submitButtonText}>Sign In</Text>
+                <Text style={styles.submitButtonText}>
+                  {loading ? "Signing In..." : "Sign In"}
+                </Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -212,6 +241,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  submitButtonDisabled: {
+    opacity: 0.7,
   },
   submitButtonText: {
     color: "#4A90E2",

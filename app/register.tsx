@@ -1,8 +1,10 @@
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import {
+  Alert,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
@@ -14,16 +16,45 @@ import {
   View,
 } from "react-native";
 
+import { auth } from "@/firebaseConfig";
+
 const { height } = Dimensions.get("window");
 
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
-    // Submit functionality will be added later
-    console.log("Submit pressed", { email, password });
+  const handleSubmit = async () => {
+    if (!email || !password || !repeatPassword) {
+      Alert.alert("Error", "Please fill in all fields.");
+      return;
+    }
+
+    if (password !== repeatPassword) {
+      Alert.alert("Error", "Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      router.replace("/trips");
+    } catch (error: any) {
+      const code = error.code;
+      let message = "An error occurred. Please try again.";
+      if (code === "auth/email-already-in-use") {
+        message = "An account with this email already exists.";
+      } else if (code === "auth/invalid-email") {
+        message = "Please enter a valid email address.";
+      } else if (code === "auth/weak-password") {
+        message = "Password should be at least 6 characters.";
+      }
+      Alert.alert("Sign Up Failed", message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -108,11 +139,14 @@ export default function Register() {
               </View>
 
               <TouchableOpacity
-                style={styles.submitButton}
+                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
                 onPress={handleSubmit}
                 activeOpacity={0.8}
+                disabled={loading}
               >
-                <Text style={styles.submitButtonText}>Sign Up</Text>
+                <Text style={styles.submitButtonText}>
+                  {loading ? "Signing Up..." : "Sign Up"}
+                </Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -227,6 +261,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  submitButtonDisabled: {
+    opacity: 0.7,
   },
   submitButtonText: {
     color: "#4A90E2",
