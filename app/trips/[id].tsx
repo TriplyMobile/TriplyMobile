@@ -1,3 +1,6 @@
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
@@ -7,6 +10,7 @@ import {
   Alert,
   FlatList,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -32,6 +36,8 @@ export default function TripDetail() {
   const [deleting, setDeleting] = useState(false);
   const [countryModalVisible, setCountryModalVisible] = useState(false);
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
   useEffect(() => {
     const loadTrip = async () => {
@@ -124,6 +130,45 @@ export default function TripDetail() {
 
     return unsubscribe;
   }, [navigation, isEditing, formData, trip]);
+
+  const parseDate = (dateString?: string): Date => {
+    if (dateString) {
+      const parsed = new Date(dateString + "T00:00:00");
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+    return new Date();
+  };
+
+  const formatToYYYYMMDD = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleStartDateChange = (
+    _event: DateTimePickerEvent,
+    selectedDate?: Date
+  ) => {
+    if (Platform.OS === "android") {
+      setShowStartDatePicker(false);
+    }
+    if (selectedDate) {
+      setFormData({ ...formData, startDate: formatToYYYYMMDD(selectedDate) });
+    }
+  };
+
+  const handleEndDateChange = (
+    _event: DateTimePickerEvent,
+    selectedDate?: Date
+  ) => {
+    if (Platform.OS === "android") {
+      setShowEndDatePicker(false);
+    }
+    if (selectedDate) {
+      setFormData({ ...formData, endDate: formatToYYYYMMDD(selectedDate) });
+    }
+  };
 
   const formatDate = (dateString?: string): string => {
     if (!dateString) return "Not set";
@@ -327,15 +372,58 @@ export default function TripDetail() {
         <View style={styles.section}>
           <Text style={styles.label}>Start Date</Text>
           {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={formData.startDate}
-              onChangeText={(text) =>
-                setFormData({ ...formData, startDate: text })
-              }
-              placeholder="YYYY-MM-DD"
-              editable={!saving}
-            />
+            <>
+              <TouchableOpacity
+                style={styles.input}
+                onPress={() => setShowStartDatePicker(true)}
+                disabled={saving}
+                accessibilityLabel="Start date selector"
+                accessibilityHint="Tap to select the start date for your trip"
+                accessibilityRole="button"
+              >
+                <Text
+                  style={
+                    formData.startDate
+                      ? styles.inputText
+                      : styles.placeholderText
+                  }
+                >
+                  {formData.startDate || "Select start date"}
+                </Text>
+              </TouchableOpacity>
+              {showStartDatePicker &&
+                (Platform.OS === "ios" ? (
+                  <Modal
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => setShowStartDatePicker(false)}
+                  >
+                    <View style={styles.modalOverlay}>
+                      <View style={styles.datePickerModal}>
+                        <DateTimePicker
+                          value={parseDate(formData.startDate)}
+                          mode="date"
+                          display="inline"
+                          onChange={handleStartDateChange}
+                        />
+                        <TouchableOpacity
+                          style={styles.modalButton}
+                          onPress={() => setShowStartDatePicker(false)}
+                        >
+                          <Text style={styles.modalButtonText}>Done</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </Modal>
+                ) : (
+                  <DateTimePicker
+                    value={parseDate(formData.startDate)}
+                    mode="date"
+                    display="default"
+                    onChange={handleStartDateChange}
+                  />
+                ))}
+            </>
           ) : (
             <Text style={styles.value}>{formatDate(trip.startDate)}</Text>
           )}
@@ -344,15 +432,58 @@ export default function TripDetail() {
         <View style={styles.section}>
           <Text style={styles.label}>End Date</Text>
           {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={formData.endDate}
-              onChangeText={(text) =>
-                setFormData({ ...formData, endDate: text })
-              }
-              placeholder="YYYY-MM-DD"
-              editable={!saving}
-            />
+            <>
+              <TouchableOpacity
+                style={styles.input}
+                onPress={() => setShowEndDatePicker(true)}
+                disabled={saving}
+                accessibilityLabel="End date selector"
+                accessibilityHint="Tap to select the end date for your trip"
+                accessibilityRole="button"
+              >
+                <Text
+                  style={
+                    formData.endDate
+                      ? styles.inputText
+                      : styles.placeholderText
+                  }
+                >
+                  {formData.endDate || "Select end date"}
+                </Text>
+              </TouchableOpacity>
+              {showEndDatePicker &&
+                (Platform.OS === "ios" ? (
+                  <Modal
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => setShowEndDatePicker(false)}
+                  >
+                    <View style={styles.modalOverlay}>
+                      <View style={styles.datePickerModal}>
+                        <DateTimePicker
+                          value={parseDate(formData.endDate)}
+                          mode="date"
+                          display="inline"
+                          onChange={handleEndDateChange}
+                        />
+                        <TouchableOpacity
+                          style={styles.modalButton}
+                          onPress={() => setShowEndDatePicker(false)}
+                        >
+                          <Text style={styles.modalButtonText}>Done</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </Modal>
+                ) : (
+                  <DateTimePicker
+                    value={parseDate(formData.endDate)}
+                    mode="date"
+                    display="default"
+                    onChange={handleEndDateChange}
+                  />
+                ))}
+            </>
           ) : (
             <Text style={styles.value}>{formatDate(trip.endDate)}</Text>
           )}
@@ -734,12 +865,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
   },
+  datePickerModal: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 24,
+    width: "90%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+    alignItems: "center",
+  },
   modalButton: {
     marginTop: 16,
     padding: 14,
     backgroundColor: "#F5F7FB",
     borderRadius: 8,
     alignItems: "center",
+    width: "100%",
   },
   modalButtonText: {
     color: "#666",
