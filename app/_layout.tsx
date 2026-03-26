@@ -7,6 +7,7 @@ export default function RootLayout() {
       <Stack.Screen name="trips" options={{ title: "My Trips", headerBackTitle: "Back" }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="register" options={{ headerShown: false }} />
+      <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
       <Stack.Screen name="trips/[id]" options={{ title: "Trip Details", headerBackTitle: "Trips" }} />
     </Stack>
   );
