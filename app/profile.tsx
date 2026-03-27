@@ -14,8 +14,6 @@ export default function Profile() {
       <Text style={styles.label}>Email</Text>
       <Text style={styles.value}>{user?.email ?? "N/A"}</Text>
 
-      <Text style={styles.label}>User ID</Text>
-      <Text style={styles.value}>{user?.uid ?? "N/A"}</Text>
     </View>
   );
 }
