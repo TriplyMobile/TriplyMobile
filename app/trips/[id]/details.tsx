@@ -18,10 +18,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { COUNTRIES } from "../../constants/countries";
-import { CURRENCIES } from "../../constants/currencies";
-import { db } from "../../firebaseConfig";
-import { Trip, TripFormData } from "../../types/trip";
+import { COUNTRIES } from "../../../constants/countries";
+import { CURRENCIES } from "../../../constants/currencies";
+import { db } from "../../../firebaseConfig";
+import { Trip, TripFormData } from "../../../types/trip";
 
 export default function TripDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
