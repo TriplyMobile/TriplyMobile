@@ -1,11 +1,10 @@
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { sendPasswordResetEmail } from "firebase/auth";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import {
   Alert,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -18,34 +17,33 @@ import {
 
 import { auth } from "@/firebaseConfig";
 
-const { height } = Dimensions.get("window");
-
-export default function Login() {
+export default function ForgotPassword() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields.");
+  const handleReset = async () => {
+    if (!email) {
+      Alert.alert("Error", "Please enter your email address.");
       return;
     }
 
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.replace("/trips");
+      await sendPasswordResetEmail(auth, email);
+      Alert.alert(
+        "Check Your Email",
+        "If an account exists for this email, a password reset link has been sent.",
+        [{ text: "OK", onPress: () => router.back() }]
+      );
     } catch (error: any) {
       const code = error.code;
       let message = "An error occurred. Please try again.";
-      if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
-        message = "Invalid email or password.";
-      } else if (code === "auth/invalid-email") {
+      if (code === "auth/invalid-email") {
         message = "Please enter a valid email address.";
       } else if (code === "auth/too-many-requests") {
         message = "Too many attempts. Please try again later.";
       }
-      Alert.alert("Sign In Failed", message);
+      Alert.alert("Error", message);
     } finally {
       setLoading(false);
     }
@@ -83,9 +81,11 @@ export default function Login() {
 
             {/* Header */}
             <View style={styles.header}>
-              <Text style={styles.logoText}>✈️</Text>
-              <Text style={styles.title}>Welcome Back</Text>
-              <Text style={styles.subtitle}>Sign in to continue your journey</Text>
+              <Text style={styles.logoText}>🔑</Text>
+              <Text style={styles.title}>Reset Password</Text>
+              <Text style={styles.subtitle}>
+                Enter your email and we'll send you a link to reset your password
+              </Text>
             </View>
 
             {/* Form */}
@@ -104,37 +104,15 @@ export default function Login() {
                 />
               </View>
 
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Password</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your password"
-                  placeholderTextColor="rgba(74, 144, 226, 0.5)"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
               <TouchableOpacity
                 style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-                onPress={handleSubmit}
+                onPress={handleReset}
                 activeOpacity={0.8}
                 disabled={loading}
               >
                 <Text style={styles.submitButtonText}>
-                  {loading ? "Signing In..." : "Sign In"}
+                  {loading ? "Sending..." : "Send Reset Link"}
                 </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.forgotPasswordButton}
-                onPress={() => router.push("/forgot-password")}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -211,6 +189,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "rgba(255, 255, 255, 0.9)",
     fontWeight: "300",
+    textAlign: "center",
+    paddingHorizontal: 20,
   },
   formContainer: {
     width: "100%",
@@ -258,15 +238,5 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     letterSpacing: 0.5,
-  },
-  forgotPasswordButton: {
-    alignItems: "center",
-    marginTop: 20,
-  },
-  forgotPasswordText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "400",
-    textDecorationLine: "underline",
   },
 });
