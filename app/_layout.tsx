@@ -4,10 +4,12 @@ export default function RootLayout() {
   return (
     <Stack>
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="trips" options={{ title: "My Trips", headerBackTitle: "Back" }} />
+      <Stack.Screen name="trips" options={{ title: "My Trips", headerBackVisible: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="register" options={{ headerShown: false }} />
       <Stack.Screen name="trips/[id]" options={{ title: "Trip Details", headerBackTitle: "Trips" }} />
+      <Stack.Screen name="profile" options={{ title: "Profile", headerBackTitle: "Trips" }} />
+      <Stack.Screen name="settings" options={{ title: "Settings", headerBackTitle: "Trips" }} />
     </Stack>
   );
 }

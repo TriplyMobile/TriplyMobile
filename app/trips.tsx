@@ -1,10 +1,13 @@
-import { router } from "expo-router";
+import { router, useNavigation } from "expo-router";
+import { signOut } from "firebase/auth";
 import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
     Modal,
+    Pressable,
     StyleSheet,
     Text,
     TextInput,
@@ -14,12 +17,50 @@ import {
 import { auth, db } from "@/firebaseConfig";
 
 export default function Trips() {
+  const navigation = useNavigation();
   const [trips, setTrips] = useState<Array<{ id: string; name?: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const [tripName, setTripName] = useState("");
   const [creating, setCreating] = useState(false);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() => setMenuVisible(true)}
+          style={{ paddingHorizontal: 12 }}
+          testID="burger-menu-button"
+        >
+          <Text style={{ fontSize: 24 }}>☰</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Log Out",
+      "Are you sure you want to log out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Log Out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOut(auth);
+              router.replace("/login");
+            } catch (err) {
+              console.error("Failed to sign out:", err);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const fetchTrips = async () => {
     try {
@@ -108,6 +149,57 @@ export default function Trips() {
         </>
       )}
 
+      {/* Burger menu */}
+      <Modal
+        visible={menuVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <Pressable
+          style={styles.menuOverlay}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={styles.menuContainer}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                router.push("/profile");
+              }}
+            >
+              <Text style={styles.menuItemIcon}>👤</Text>
+              <Text style={styles.menuItemText}>Profile</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                router.push("/settings");
+              }}
+            >
+              <Text style={styles.menuItemIcon}>⚙️</Text>
+              <Text style={styles.menuItemText}>Settings</Text>
+            </TouchableOpacity>
+
+            <View style={styles.menuDivider} />
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                handleLogout();
+              }}
+            >
+              <Text style={styles.menuItemIcon}>🚪</Text>
+              <Text style={[styles.menuItemText, { color: "#E53935" }]}>Log Out</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Create trip modal */}
       <Modal
         visible={modalVisible}
         transparent={true}
@@ -276,5 +368,42 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+  },
+  menuContainer: {
+    backgroundColor: "#FFFFFF",
+    marginTop: 100,
+    marginLeft: 16,
+    borderRadius: 12,
+    paddingVertical: 8,
+    width: 220,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  menuItemIcon: {
+    fontSize: 20,
+    marginRight: 14,
+  },
+  menuItemText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#333",
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: "#EEE",
+    marginHorizontal: 16,
   },
 });
