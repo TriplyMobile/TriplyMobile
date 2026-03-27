@@ -404,6 +404,7 @@ export default function TripDetail() {
                           value={parseDate(formData.startDate)}
                           mode="date"
                           display="inline"
+                          themeVariant="light"
                           onChange={handleStartDateChange}
                         />
                         <TouchableOpacity
@@ -464,6 +465,7 @@ export default function TripDetail() {
                           value={parseDate(formData.endDate)}
                           mode="date"
                           display="inline"
+                          themeVariant="light"
                           onChange={handleEndDateChange}
                         />
                         <TouchableOpacity
