@@ -39,6 +39,10 @@ app/
 
 **New Architecture + React Compiler** are both enabled (`app.json` experiments).
 
+## Feature Implementation
+
+All features in this project must be implemented using [Spec Kit](https://speckit.dev/docs). Use the `specify` CLI to generate specs, plans, and tasks before writing any code. Feature specs live in `specs/` and each spec directory contains `spec.md`, `plan.md`, and `tasks.md`.
+
 ## Key Dependencies
 
 - `expo` ~54, `react` 19, `react-native` 0.81
