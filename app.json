@@ -2,6 +2,7 @@
   "expo": {
     "name": "triply-mobile",
     "slug": "triply-mobile",
+    "owner": "triply-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
