@@ -10,12 +10,12 @@ Figma designs : https://www.figma.com/design/vi7F12e7R7vtUUK1dzCzTt
 
 - **Framework mobile** : React Native avec Expo
 - **Navigation** : Expo Router (file-based routing)
-- **State management** : Zustand
+- **State management** : React hooks (useState/useEffect) + Firebase listeners
 - **Backend** : Firebase (Auth, Firestore, Storage)
 - **Langage** : TypeScript
-- **Style** : NativeWind (Tailwind CSS pour React Native)
+- **Style** : React Native StyleSheet API
 
-Justification : Expo permet un démarrage rapide avec un seul codebase iOS/Android. Firebase fournit auth (email/password), base de données Firestore, et realtime listeners sans gérer de serveur. NativeWind donne une DX familière pour le styling.
+Justification : Expo permet un démarrage rapide avec un seul codebase iOS/Android. Firebase fournit auth (email/password), base de données Firestore, et realtime listeners sans gérer de serveur. Le state management repose sur les hooks React natifs et les listeners Firestore, sans librairie externe.
 
 ---
 
@@ -128,19 +128,24 @@ service cloud.firestore {
 ### Structure de navigation
 
 ```
-/ (tabs non visibles — écran Accueil)
-├── /trip/[id] (layout avec bottom tabs)
-│   ├── /trip/[id]/polls (onglet Sondages)
-│   └── /trip/[id]/planning (onglet Planning)
-├── /trip/[id]/info (modal — paramètres du voyage)
-├── /trip/[id]/poll/[pollId] (modal — voter sur un sondage)
-├── /trip/[id]/poll/new (modal — créer un sondage)
-├── /trip/new (modal — créer un voyage)
-├── /join/[shareCode] (deep link — rejoindre un voyage)
-└── /auth (login/signup)
+/ (landing page — branding + login/signup)
+├── /login (email/password login)
+├── /register (email/password registration)
+├── /forgot-password (réinitialisation mot de passe)
+├── /trips (liste des voyages + création)
+├── /profile (profil utilisateur)
+├── /settings (paramètres)
+├── /trips/[id] (layout avec bottom tabs)
+│   ├── /trips/[id]/planning (onglet Planning — défaut)
+│   ├── /trips/[id]/polls (onglet Sondages)
+│   └── /trips/[id]/details (détails/édition du voyage)
+├── /trips/[id]/info (modal — paramètres du voyage)
+├── /trips/[id]/poll/[pollId] (modal — voter sur un sondage)
+├── /trips/[id]/poll/new (modal — créer un sondage)
+└── /join/[shareCode] (deep link — rejoindre un voyage)
 ```
 
-### Écran 1 : Accueil (`/`)
+### Écran 1 : Accueil (`/trips`)
 
 Liste de tous les voyages de l'utilisateur. Pas de tab bar sur cet écran.
 
@@ -158,16 +163,16 @@ Liste de tous les voyages de l'utilisateur. Pas de tab bar sur cet écran.
 - Les voyages sans activité récente sont affichés en opacité réduite
 
 **Comportement :**
-- Tap sur une carte → navigation vers `/trip/[id]/polls`
+- Tap sur une carte → navigation vers `/trips/[id]/planning`
 - Tap sur "+ Nouveau voyage" → modal de création
 - Pull-to-refresh pour recharger la liste
 - Realtime subscription : la liste se met à jour quand un vote est enregistré ou un sondage créé
 
-### Écran 2 : Vue voyage — Onglet Sondages (`/trip/[id]/polls`)
+### Écran 2 : Vue voyage — Onglet Sondages (`/trips/[id]/(tabs)/polls`)
 
 **Éléments :**
 - Header : nom du voyage + sous-titre (participants, dates)
-- Bouton info (i) en haut à droite → ouvre la modal `/trip/[id]/info`
+- Bouton info (i) en haut à droite → ouvre la modal `/trips/[id]/info`
 - Liste des sondages, chacun affichant :
     - Titre du sondage (ex: "Quel logement ?")
     - Badge compteur de votes "X/Y" (votes reçus / total participants)
@@ -178,14 +183,14 @@ Liste de tous les voyages de l'utilisateur. Pas de tab bar sur cet écran.
     - L'option avec le plus de votes est mise en avant (fond bleu clair)
 - Sondages terminés : affichés en opacité réduite avec badge "Terminé" vert
 - Bouton "+ Créer un sondage" (bordure pointillée)
-- Bottom navigation : 2 onglets "Sondages" (actif) et "Planning"
+- Bottom navigation : 2 onglets "Planning" et "Sondages" (actif)
 
 **Comportement :**
-- Tap sur un sondage ouvert → modal de vote `/trip/[id]/poll/[pollId]`
-- Tap sur "+ Créer un sondage" → modal `/trip/[id]/poll/new`
+- Tap sur un sondage ouvert → modal de vote `/trips/[id]/poll/[pollId]`
+- Tap sur "+ Créer un sondage" → modal `/trips/[id]/poll/new`
 - Realtime : les votes apparaissent en temps réel (avatars, compteur)
 
-### Écran 3 : Vue voyage — Onglet Planning (`/trip/[id]/planning`)
+### Écran 3 : Vue voyage — Onglet Planning (`/trips/[id]/(tabs)/planning`)
 
 **Éléments :**
 - Header : identique à l'onglet Sondages (nom, info, sous-titre)
@@ -202,14 +207,14 @@ Liste de tous les voyages de l'utilisateur. Pas de tab bar sur cet écran.
             - Vert "Réservé" (booking_reference renseigné)
             - Orange "Vote" (lié à un sondage encore ouvert)
             - Pas de badge si confirmé mais pas encore réservé
-- Bottom navigation : 2 onglets "Sondages" et "Planning" (actif)
+- Bottom navigation : 2 onglets "Planning" (actif) et "Sondages"
 
 **Comportement :**
 - Tap sur un item "Vote" → navigue vers le sondage associé
 - Tap sur un item confirmé/réservé → bottom sheet pour voir/éditer les détails (numéro de résa, lien)
 - Les items sont triés par date puis par time_of_day (morning < afternoon < evening < all_day)
 
-### Modal : Voter (`/trip/[id]/poll/[pollId]`)
+### Modal : Voter (`/trips/[id]/poll/[pollId]`)
 
 Flow en 3 états (voir Figma page "Flow de vote") :
 
@@ -236,7 +241,7 @@ Flow en 3 états (voir Figma page "Flow de vote") :
 - Si l'utilisateur a déjà voté, afficher directement l'état 3 (résultats)
 - Realtime : les résultats se mettent à jour en temps réel
 
-### Modal : Créer un sondage (`/trip/[id]/poll/new`)
+### Modal : Créer un sondage (`/trips/[id]/poll/new`)
 
 **Éléments :**
 - Champ texte : titre du sondage
@@ -256,7 +261,7 @@ Flow en 3 états (voir Figma page "Flow de vote") :
 - Bouton "Créer"
 - Après création → affiche le lien de partage avec bouton copier/partager
 
-### Modal : Infos du voyage (`/trip/[id]/info`)
+### Modal : Infos du voyage (`/trips/[id]/info`)
 
 **Éléments :**
 - Nom du voyage (éditable par l'organisateur)
@@ -293,16 +298,7 @@ C'est le mécanisme central de l'app. Voici le flow détaillé :
 
 ## Features additionnelles
 
-### 1. Notifications push
-
-- **Nouveau sondage créé** : notifier tous les participants du voyage
-- **Rappel de vote** : l'organisateur peut envoyer un nudge aux participants qui n'ont pas encore voté
-- **Sondage clôturé** : notifier tous les participants du résultat
-- **Nouveau participant** : notifier quand quelqu'un rejoint via le lien de partage
-
-Implémentation : Expo Notifications + Firebase Cloud Functions pour envoyer les push via expo-server-sdk.
-
-### 2. Lien de partage pour inviter
+### 1. Lien de partage pour inviter
 
 - Chaque voyage a un `share_code` unique (8 caractères, généré à la création)
 - L'organisateur partage un lien de type `https://tripplanner.app/join/[shareCode]`
@@ -310,27 +306,20 @@ Implémentation : Expo Notifications + Firebase Cloud Functions pour envoyer les
 - Le participant qui ouvre le lien est automatiquement ajouté au voyage après auth
 - Utiliser la Share API native pour partager via WhatsApp, iMessage, etc.
 
-### 3. Ajouter une option à un sondage existant
+### 2. Ajouter une option à un sondage existant
 
 - Sur un sondage ouvert, n'importe quel participant peut ajouter une nouvelle option
 - Bouton "+ Ajouter une option" visible en bas de la liste des options dans la modal de vote
 - Ouvre un mini-formulaire inline : label + description + prix
 - L'option ajoutée apparaît immédiatement (realtime) pour tous les participants
 
-### 4. Numéro de confirmation sur les items du planning
+### 3. Numéro de confirmation sur les items du planning
 
 - Chaque item réservé dans le planning peut contenir :
     - `booking_reference` : numéro de confirmation (texte libre)
     - `booking_url` : lien vers la réservation (Booking, Airbnb, etc.)
 - Accessible via tap sur l'item dans le planning → bottom sheet d'édition
 - Tous les participants peuvent voir et copier ces informations
-
-### 5. Rappel de vote (nudge)
-
-- Sur un sondage ouvert, l'organisateur voit un bouton "Rappeler les retardataires"
-- Envoie une notification push aux participants qui n'ont pas encore voté
-- Rate-limité : maximum 1 rappel par sondage par 24h
-- Le bouton affiche "Rappel envoyé" après utilisation (désactivé jusqu'au lendemain)
 
 ---
 
@@ -455,13 +444,15 @@ app/
 ├── register.tsx                     # Inscription (email/password)
 ├── forgot-password.tsx              # Réinitialisation mot de passe
 ├── profile.tsx                      # Profil utilisateur
+├── settings.tsx                     # Paramètres
 ├── trips.tsx                        # Liste des voyages + création
 ├── trips/
 │   └── [id]/
+│       ├── _layout.tsx              # Layout trip detail
 │       ├── (tabs)/
 │       │   ├── _layout.tsx          # Layout avec bottom tabs
-│       │   ├── polls.tsx            # Onglet Sondages
-│       │   └── planning.tsx         # Onglet Planning
+│       │   ├── planning.tsx         # Onglet Planning (défaut)
+│       │   └── polls.tsx            # Onglet Sondages
 │       ├── details.tsx              # Détails/édition du voyage
 │       ├── info.tsx                 # Modal infos voyage
 │       └── poll/
@@ -476,13 +467,11 @@ components/
 ├── PollOption.tsx
 ├── PlanningDayHeader.tsx
 ├── PlanningItem.tsx
-├── BottomTab.tsx
+├── BottomNavBar.tsx
 ├── Avatar.tsx
 └── InfoButton.tsx
 lib/
-├── store.ts                         # Zustand store
-├── types.ts                         # Types TypeScript
-└── notifications.ts                 # Push notifications helpers
+└── types.ts                         # Types TypeScript
 ```
 
 ---
@@ -490,7 +479,7 @@ lib/
 ## Priorités d'implémentation
 
 ### Phase 1 — MVP (shipper en premier)
-1. Auth (magic link)
+1. Auth (email/password)
 2. Créer un voyage
 3. Lien de partage + rejoindre un voyage
 4. Créer un sondage avec options
@@ -499,13 +488,11 @@ lib/
 7. Voir le planning
 
 ### Phase 2 — Polish
-8. Notifications push
-9. Rappel de vote (nudge)
-10. Ajouter une option à un sondage existant
-11. Numéro de confirmation sur les items du planning
-12. Deep links
+8. Ajouter une option à un sondage existant
+9. Numéro de confirmation sur les items du planning
+10. Deep links
 
 ### Phase 3 — Nice to have
-13. Photo de couverture du voyage
-14. Export du planning (PDF ou partage)
-15. Mode hors ligne basique
+11. Photo de couverture du voyage
+12. Export du planning (PDF ou partage)
+13. Mode hors ligne basique
