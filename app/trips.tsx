@@ -1,30 +1,61 @@
 import { router, useNavigation } from "expo-router";
 import { signOut } from "firebase/auth";
-import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
+import {
+  addDoc,
+  arrayUnion,
+  collection,
+  doc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
+} from "firebase/firestore";
 import { useEffect, useLayoutEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { auth, db } from "@/firebaseConfig";
+import TripCard from "@/components/TripCard";
+import { Colors, Trip } from "@/lib/types";
+
+function generateShareCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+interface TripWithMeta extends Trip {
+  participantCount: number;
+  openPollCount: number;
+}
 
 export default function Trips() {
   const navigation = useNavigation();
-  const [trips, setTrips] = useState<Array<{ id: string; name?: string }>>([]);
+  const [trips, setTrips] = useState<TripWithMeta[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [tripName, setTripName] = useState("");
+  const [tripDescription, setTripDescription] = useState("");
   const [creating, setCreating] = useState(false);
+  const [joinModalVisible, setJoinModalVisible] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -41,25 +72,21 @@ export default function Trips() {
   }, [navigation]);
 
   const handleLogout = () => {
-    Alert.alert(
-      "Log Out",
-      "Are you sure you want to log out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Log Out",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await signOut(auth);
-              router.replace("/login");
-            } catch (err) {
-              console.error("Failed to sign out:", err);
-            }
-          },
+    Alert.alert("Log Out", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log Out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await signOut(auth);
+            router.replace("/login");
+          } catch (err) {
+            console.error("Failed to sign out:", err);
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   const fetchTrips = async () => {
@@ -69,19 +96,59 @@ export default function Trips() {
         router.replace("/login");
         return;
       }
-      const q = query(collection(db, "trips"), where("userId", "==", user.uid));
-      const snapshot = await getDocs(q);
-      const allTrips = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as { name?: string }),
-      }));
 
-      setTrips(allTrips);
+      // Query trips where user is in the participantIds array
+      const tripsSnap = await getDocs(
+        query(
+          collection(db, "trips"),
+          where("participantIds", "array-contains", user.uid)
+        )
+      );
+
+      const userTrips: TripWithMeta[] = [];
+
+      for (const tripDoc of tripsSnap.docs) {
+        const data = tripDoc.data();
+
+        let openPollCount = 0;
+        try {
+          const pollsSnap = await getDocs(
+            query(
+              collection(db, "trips", tripDoc.id, "polls"),
+              where("status", "==", "open")
+            )
+          );
+          openPollCount = pollsSnap.size;
+        } catch {}
+
+        const participantIds: string[] = data.participantIds ?? [];
+
+        userTrips.push({
+          id: tripDoc.id,
+          name: data.name ?? "Unnamed trip",
+          description: data.description ?? null,
+          coverImageUrl: data.coverImageUrl ?? null,
+          createdBy: data.createdBy ?? data.userId ?? "",
+          shareCode: data.shareCode ?? "",
+          status: data.status ?? "planning",
+          startDate: data.startDate ?? null,
+          endDate: data.endDate ?? null,
+          countryDestination: data.countryDestination ?? null,
+          maxBudget: data.maxBudget ?? null,
+          currency: data.currency ?? null,
+          createdAt: data.createdAt,
+          participantCount: Math.max(participantIds.length, 1),
+          openPollCount,
+        });
+      }
+
+      setTrips(userTrips);
     } catch (err) {
       setError("Unable to load trips right now.");
       console.error("Failed to load trips:", err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -90,19 +157,39 @@ export default function Trips() {
   }, []);
 
   const handleCreateTrip = async () => {
-    if (!tripName.trim()) {
-      return;
-    }
+    if (!tripName.trim()) return;
 
     setCreating(true);
     try {
       const user = auth.currentUser;
       if (!user) return;
-      await addDoc(collection(db, "trips"), {
+
+      const shareCode = generateShareCode();
+      const tripRef = await addDoc(collection(db, "trips"), {
         name: tripName.trim(),
-        userId: user.uid,
+        description: tripDescription.trim() || null,
+        coverImageUrl: null,
+        createdBy: user.uid,
+        shareCode,
+        status: "planning",
+        startDate: null,
+        endDate: null,
+        countryDestination: null,
+        maxBudget: null,
+        currency: null,
+        participantIds: [user.uid],
+        createdAt: serverTimestamp(),
       });
+
+      // Add creator as organizer participant
+      await setDoc(doc(db, "trips", tripRef.id, "participants", user.uid), {
+        userId: user.uid,
+        role: "organizer",
+        joinedAt: serverTimestamp(),
+      });
+
       setTripName("");
+      setTripDescription("");
       setModalVisible(false);
       await fetchTrips();
     } catch (err) {
@@ -113,9 +200,14 @@ export default function Trips() {
     }
   };
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchTrips();
+  };
+
   return (
     <View style={styles.container}>
-      {loading && <ActivityIndicator size="large" color="#4A90E2" />}
+      {loading && <ActivityIndicator size="large" color={Colors.primary} />}
 
       {!loading && error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -125,27 +217,43 @@ export default function Trips() {
             data={trips}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.card}
+              <TripCard
+                name={item.name}
+                participantCount={item.participantCount}
+                startDate={item.startDate}
+                endDate={item.endDate}
+                openPollCount={item.openPollCount}
+                status={item.status}
                 onPress={() => router.push(`/trips/${item.id}`)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.tripName}>{item.name ?? "Unnamed trip"}</Text>
-              </TouchableOpacity>
+              />
             )}
-            ListEmptyComponent={<Text style={styles.emptyText}>No trips yet.</Text>}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>No trips yet.</Text>
+            }
             contentContainerStyle={[
+              { paddingHorizontal: 20, paddingTop: 12 },
               trips.length === 0 && styles.emptyListContainer,
               { paddingBottom: 100 },
             ]}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
           />
-          <TouchableOpacity
-            style={styles.createButton}
-            onPress={() => setModalVisible(true)}
-          >
-            <Text style={styles.createButtonText}>Create new trip</Text>
-          </TouchableOpacity>
+          <View style={styles.bottomButtons}>
+            <TouchableOpacity
+              style={styles.joinButton}
+              onPress={() => setJoinModalVisible(true)}
+            >
+              <Text style={styles.joinButtonText}>Join a trip</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.createButton}
+              onPress={() => setModalVisible(true)}
+            >
+              <Text style={styles.createButtonText}>+ New trip</Text>
+            </TouchableOpacity>
+          </View>
         </>
       )}
 
@@ -193,10 +301,62 @@ export default function Trips() {
               }}
             >
               <Text style={styles.menuItemIcon}>🚪</Text>
-              <Text style={[styles.menuItemText, { color: "#E53935" }]}>Log Out</Text>
+              <Text style={[styles.menuItemText, { color: Colors.danger }]}>
+                Log Out
+              </Text>
             </TouchableOpacity>
           </View>
         </Pressable>
+      </Modal>
+
+      {/* Join trip modal */}
+      <Modal
+        visible={joinModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setJoinModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Join a Trip</Text>
+            <Text style={styles.joinHint}>
+              Enter the 8-character code shared by the trip organizer.
+            </Text>
+            <TextInput
+              style={[styles.textInput, styles.codeInput]}
+              placeholder="e.g. ABCD1234"
+              value={joinCode}
+              onChangeText={(t) => setJoinCode(t.toUpperCase())}
+              autoFocus={true}
+              autoCapitalize="characters"
+              maxLength={8}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setJoinModalVisible(false);
+                  setJoinCode("");
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={() => {
+                  if (joinCode.trim().length > 0) {
+                    setJoinModalVisible(false);
+                    router.push(`/join/${joinCode.trim()}`);
+                    setJoinCode("");
+                  }
+                }}
+                disabled={joinCode.trim().length === 0}
+              >
+                <Text style={styles.confirmButtonText}>Join</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Create trip modal */}
@@ -211,10 +371,17 @@ export default function Trips() {
             <Text style={styles.modalTitle}>Create New Trip</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="Enter trip name"
+              placeholder="Trip name"
               value={tripName}
               onChangeText={setTripName}
               autoFocus={true}
+            />
+            <TextInput
+              style={[styles.textInput, { height: 60 }]}
+              placeholder="Description (optional)"
+              value={tripDescription}
+              onChangeText={setTripDescription}
+              multiline
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -222,6 +389,7 @@ export default function Trips() {
                 onPress={() => {
                   setModalVisible(false);
                   setTripName("");
+                  setTripDescription("");
                 }}
                 disabled={creating}
               >
@@ -235,7 +403,7 @@ export default function Trips() {
                 {creating ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.confirmButtonText}>Confirm</Text>
+                  <Text style={styles.confirmButtonText}>Create</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -249,30 +417,13 @@ export default function Trips() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Colors.background,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  card: {
-    width: "100%",
-    padding: 16,
-    marginTop: 12,
-    borderRadius: 12,
-    backgroundColor: "#F5F7FB",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  tripName: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
+  errorText: {
+    marginTop: 20,
+    color: Colors.danger,
+    fontSize: 16,
+    textAlign: "center",
   },
   emptyListContainer: {
     flexGrow: 1,
@@ -282,19 +433,33 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 20,
     fontSize: 16,
-    color: "#666",
+    color: Colors.textSecondary,
   },
-  errorText: {
-    marginTop: 20,
-    color: "#E53935",
-    fontSize: 16,
-  },
-  createButton: {
+  bottomButtons: {
     position: "absolute",
     bottom: 20,
     left: 20,
     right: 20,
-    backgroundColor: "#4A90E2",
+    flexDirection: "row",
+    gap: 10,
+  },
+  joinButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  joinButtonText: {
+    color: Colors.textPrimary,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  createButton: {
+    flex: 1,
+    backgroundColor: Colors.primary,
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
@@ -309,6 +474,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  joinHint: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginBottom: 16,
+  },
+  codeInput: {
+    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "600",
+    letterSpacing: 4,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -321,31 +497,27 @@ const styles = StyleSheet.create({
     padding: 24,
     width: "85%",
     maxWidth: 400,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#333",
+    color: Colors.textPrimary,
     marginBottom: 20,
   },
   textInput: {
     borderWidth: 1,
-    borderColor: "#DDD",
+    borderColor: Colors.border,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    marginBottom: 20,
-    backgroundColor: "#F9F9F9",
+    marginBottom: 12,
+    backgroundColor: Colors.surface,
   },
   modalButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 12,
+    marginTop: 8,
   },
   modalButton: {
     flex: 1,
@@ -354,13 +526,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cancelButton: {
-    backgroundColor: "#F5F7FB",
+    backgroundColor: Colors.surface,
   },
   confirmButton: {
-    backgroundColor: "#4A90E2",
+    backgroundColor: Colors.primary,
   },
   cancelButtonText: {
-    color: "#666",
+    color: Colors.textSecondary,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -399,11 +571,11 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 16,
     fontWeight: "500",
-    color: "#333",
+    color: Colors.textPrimary,
   },
   menuDivider: {
     height: 1,
-    backgroundColor: "#EEE",
+    backgroundColor: Colors.border,
     marginHorizontal: 16,
   },
 });
