@@ -1,17 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Colors } from "@/lib/types";
 
 const TAB_CONFIG: Record<
   string,
   { icon: keyof typeof Ionicons.glyphMap; label: string }
 > = {
-  finances: { icon: "cash-outline", label: "Finances" },
-  dashboard: { icon: "calendar-outline", label: "Dashboard" },
-  checklists: { icon: "list-outline", label: "Checklists" },
+  planning: { icon: "calendar-outline", label: "Planning" },
+  polls: { icon: "bar-chart-outline", label: "Polls" },
 };
 
-const TAB_ORDER = ["finances", "dashboard", "checklists"];
+const TAB_ORDER = ["planning", "polls"];
 
 export default function BottomNavBar({
   state,
@@ -30,8 +30,6 @@ export default function BottomNavBar({
 
         const routeIndex = state.routes.indexOf(route);
         const isFocused = state.index === routeIndex;
-        const { options } = descriptors[route.key];
-        const isMain = route.name === "dashboard";
 
         const onPress = () => {
           const event = navigation.emit({
@@ -51,14 +49,22 @@ export default function BottomNavBar({
             onPress={onPress}
             accessibilityRole="tab"
             accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel || config.label}
+            accessibilityLabel={config.label}
             style={styles.tab}
           >
             <Ionicons
               name={config.icon}
-              size={isMain ? 30 : 28}
-              color={isFocused ? "#000000" : "#8D8C8C"}
+              size={24}
+              color={isFocused ? Colors.primary : Colors.textTertiary}
             />
+            <Text
+              style={[
+                styles.label,
+                { color: isFocused ? Colors.primary : Colors.textTertiary },
+              ]}
+            >
+              {config.label}
+            </Text>
             {isFocused && <View style={styles.activeIndicator} />}
           </Pressable>
         );
@@ -75,11 +81,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     height: 80,
     paddingBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   tab: {
     flex: 1,
@@ -87,11 +90,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 8,
   },
+  label: {
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: "500",
+  },
   activeIndicator: {
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: "#4A90E2",
-    marginTop: 4,
+    backgroundColor: Colors.primary,
+    marginTop: 3,
   },
 });
